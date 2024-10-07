@@ -1,0 +1,59 @@
+name: Rust
+
+on:
+  push:
+    branches: ["master"]
+  pull_request:
+    branches: ["master"]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Cache Cargo registry and build
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
+
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+        components: clippy # Optional: includes Clippy for linting
+        profile: minimal
+
+    - name: Format Check
+      run: cargo fmt -- --check # Check code formatting
+
+    - name: Lint Code
+      run: cargo clippy -- -D warnings # Lint your code and fail on warnings
+
+    - name: Build
+      run: cargo build --verbose
+
+    - name: Run tests
+      run: cargo test --verbose
+
+    - name: Publish coverage report (optional)
+      if: success() # Only run if the build and tests were successful
+      uses: codecov/codecov-action@v3
+      with:
+        files: ./target/debug/coverage/lcov.info # Adjust to your coverage report's path
+
+    - name: Notify on failure (optional)
+      if: failure()
+      run: echo "Build failed for Rust project!" # Custom notification command can be added here
